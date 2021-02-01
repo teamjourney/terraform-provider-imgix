@@ -6,11 +6,14 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 )
 
 const (
 	ApiUrl = "https://api.imgix.com"
+
+	TypeSource = "sources"
 )
 
 type Client struct {
@@ -24,7 +27,7 @@ type Source struct {
 	Attributes struct {
 		DateDeployed     *int    `json:"date_deployed,omitempty"`
 		DeploymentStatus *string `json:"deployment_status,omitempty"`
-		Enabled          bool    `json:"enabled"`
+		Enabled          *bool   `json:"enabled,omitempty"`
 		Name             string  `json:"name"`
 		SecureUrlToken   *string `json:"secure_url_token,omitempty"`
 
@@ -54,11 +57,17 @@ type Source struct {
 	} `json:"attributes"`
 }
 
+type ApiError struct {
+	Errors []struct {
+		Detail string `json:"detail"`
+		Status string `json:"status"`
+		Title  string `json:"title"`
+	} `json:"errors"`
+}
+
 func (s Source) MarshalJSON() ([]byte, error) {
 	type alias Source
 	var a = alias(s)
-	a.Id = nil
-	a.Type = nil
 	a.Attributes.DateDeployed = nil
 	a.Attributes.DeploymentStatus = nil
 	a.Attributes.SecureUrlToken = nil
@@ -71,6 +80,7 @@ type SourceRequest struct {
 }
 
 func NewClient(config Config) *Client {
+	log.Printf("[INFO] Creating client with token: %s***", config.AccessKey[:5])
 	return &Client{
 		apiKey: config.AccessKey,
 	}
@@ -93,21 +103,28 @@ func (c *Client) getSourceById(id string) (*Source, error) {
 	return source.Data, nil
 }
 
-func (c *Client) updateSource(source *Source) error {
-	d := SourceRequest{Data: source}
-	b, err := json.Marshal(d)
+func (c *Client) createSource(source *Source) (*Source, error) {
+	res, err := c.sendSourceRequest("/api/v1/sources", http.MethodPost, source)
 	if err != nil {
-		return errors.New(fmt.Sprintf("Error marshalling data: %s", err.Error()))
+		return nil, err
+	} else if res.StatusCode != http.StatusCreated {
+		return nil, serializeApiError(res)
 	}
 
-	req, _ := http.NewRequest(http.MethodPatch, ApiUrl+"/api/v1/sources/"+*source.Id, bytes.NewBuffer(b))
-	req.Header.Set("Authorization", "Bearer "+c.apiKey)
-	res, err := http.DefaultClient.Do(req)
+	newSource := &Source{}
+	_ = json.NewDecoder(res.Body).Decode(newSource)
+	return newSource, nil
+}
+
+func (c *Client) updateSource(source *Source) error {
+	res, err := c.sendSourceRequest(
+		"/api/v1/sources/"+*source.Id,
+		http.MethodPatch,
+		source,
+	)
+
 	if err != nil {
-		return errors.New(fmt.Sprintf(
-			"Error sending request to Imgix API: %s",
-			err,
-		))
+		return err
 	}
 
 	if res.StatusCode != http.StatusOK {
@@ -117,6 +134,33 @@ func (c *Client) updateSource(source *Source) error {
 	return nil
 }
 
+func (c *Client) sendSourceRequest(endpoint, method string, source *Source) (*http.Response, error) {
+	d := SourceRequest{Data: source}
+	b, err := json.Marshal(d)
+
+	url := ApiUrl + endpoint
+	log.Printf("[DEBUG] Sending request to Imgix API: %s %s", method, url)
+	log.Printf("[DEBUG] Body: %s", b)
+	if err != nil {
+		return nil, errors.New(fmt.Sprintf("Error marshalling data: %s", err.Error()))
+	}
+
+	req, _ := http.NewRequest(method, url, bytes.NewBuffer(b))
+	req.Header.Set("Authorization", "Bearer "+c.apiKey)
+	req.Header.Set("Content-Type", "application/json")
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return res, errors.New(fmt.Sprintf("Error sending request to Imgix API: %s", err))
+	}
+
+	return res, nil
+}
+
+func (c *Client) deleteSource(source *Source) error {
+	source.Attributes.Enabled = Bool(false)
+	return c.updateSource(source)
+}
+
 func serializeApiError(res *http.Response) error {
 	text, err := ioutil.ReadAll(res.Body)
 	if err != nil {
@@ -124,9 +168,19 @@ func serializeApiError(res *http.Response) error {
 		return errors.New(msg)
 	}
 
+	apiError := &ApiError{}
+	if err := json.Unmarshal(text, apiError); err != nil {
+		return errors.New("Error parsing response: " + err.Error())
+	}
+
+	msg := ""
+	for _, e := range apiError.Errors {
+		msg += fmt.Sprintf("status %s, details: %s", e.Status, e.Detail)
+	}
+
 	return errors.New(fmt.Sprintf(
 		"Error response from Imgix API. Status code: %d, error: %s",
 		res.StatusCode,
-		string(text),
+		msg,
 	))
 }

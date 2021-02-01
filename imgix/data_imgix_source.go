@@ -8,6 +8,7 @@ import (
 
 func dataSourceImgixSource() *schema.Resource {
 	return &schema.Resource{
+		Description: "Allows getting Imgix source information",
 		ReadContext: func(ctx context.Context, data *schema.ResourceData, i interface{}) diag.Diagnostics {
 			client := i.(*Client)
 			id := data.Get("id").(string)

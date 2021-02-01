@@ -16,7 +16,7 @@ func Provider() *schema.Provider {
 			"api_key": {
 				Type:        schema.TypeString,
 				Required:    true,
-				Description: "Imgix API key",
+				Description: "Imgix API key. Can also be sourced from IMGIX_API_KEY environment variable",
 				DefaultFunc: schema.EnvDefaultFunc("IMGIX_API_KEY", nil),
 			},
 		},

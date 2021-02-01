@@ -5,6 +5,14 @@ func String(v interface{}) *string {
 	return &vp
 }
 
+func StringNilIfEmpty(v interface{}) *string {
+	vp := v.(string)
+	if vp == "" {
+		return nil
+	}
+	return &vp
+}
+
 func Int(v interface{}) *int {
 	vp := v.(int)
 	return &vp

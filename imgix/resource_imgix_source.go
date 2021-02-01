@@ -2,7 +2,6 @@ package imgix
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/hashicorp/go-cty/cty"
@@ -17,20 +16,20 @@ import (
 
 func resourceImgixSource() *schema.Resource {
 	return &schema.Resource{
+		Description:   "Allows managing Imgix sources",
 		ReadContext:   resourceSourceRead,
 		UpdateContext: resourceSourceUpdate,
-		CreateContext: func(ctx context.Context, data *schema.ResourceData, i interface{}) diag.Diagnostics {
-			return nil
-		},
-		DeleteContext: func(ctx context.Context, data *schema.ResourceData, i interface{}) diag.Diagnostics {
-			return nil
-		},
+		CreateContext: resourceSourceCreate,
+		DeleteContext: resourceSourceDelete,
 		Importer: &schema.ResourceImporter{
 			StateContext: schema.ImportStatePassthroughContext,
 		},
-
 		Schema: map[string]*schema.Schema{
 			"id": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+			"type": {
 				Type:     schema.TypeString,
 				Computed: true,
 			},
@@ -59,6 +58,12 @@ func resourceImgixSource() *schema.Resource {
 				Type:        schema.TypeString,
 				Computed:    true,
 				Description: "Signing token used for securing images. Only present if deployment.secure_url_enabled is true.",
+			},
+			"wait_for_deployed": {
+				Type:        schema.TypeBool,
+				Optional:    true,
+				Default:     true,
+				Description: "Determines if Terraform should wait for deployed status after any change",
 			},
 			"deployment": {
 				Type:     schema.TypeList,
@@ -178,6 +183,7 @@ func resourceImgixSource() *schema.Resource {
 							Type:        schema.TypeString,
 							Optional:    true,
 							Description: "S3 Secret Access Key.",
+							Sensitive:   true,
 						},
 						"s3_bucket": {
 							Type:        schema.TypeString,
@@ -209,8 +215,9 @@ func resourceSourceRead(_ context.Context, d *schema.ResourceData, i interface{}
 	client := i.(*Client)
 	var sourceRaw interface{}
 	var err error
-	if d.IsNewResource() {
-		sourceRaw, err = waitForSourceToExist(client, d.Id(), d.Timeout(schema.TimeoutRead))
+
+	if d.Get("wait_for_deployed").(bool) {
+		sourceRaw, err = waitForSourceToBeDeployed(client, d.Id(), d.Timeout(schema.TimeoutRead))
 	} else {
 		sourceRaw, _, err = sourceStateRefreshFunc(client, d.Id())()
 	}
@@ -220,7 +227,6 @@ func resourceSourceRead(_ context.Context, d *schema.ResourceData, i interface{}
 	}
 
 	source := sourceRaw.(*Source)
-	log.Printf("source = %+v", source)
 
 	d.SetId(*source.Id)
 	d.Set("name", source.Attributes.Name)
@@ -229,30 +235,33 @@ func resourceSourceRead(_ context.Context, d *schema.ResourceData, i interface{}
 	d.Set("date_deployed", source.Attributes.DateDeployed)
 	d.Set("enabled", source.Attributes.Enabled)
 	d.Set("secure_url_token", source.Attributes.SecureUrlToken)
-	d.Set("deployment", []interface{}{
-		map[string]interface{}{
-			"allows_upload":           source.Attributes.Deployment.AllowsUpload,
-			"annotation":              source.Attributes.Deployment.Annotation,
-			"cache_ttl_behavior":      source.Attributes.Deployment.CacheTtlBehavior,
-			"cache_ttl_error":         source.Attributes.Deployment.CacheTtlError,
-			"cache_ttl_value":         source.Attributes.Deployment.CacheTtlValue,
-			"crossdomain_xml_enabled": source.Attributes.Deployment.CrossdomainXmlEnabled,
-			"custom_domains":          source.Attributes.Deployment.CustomDomains,
-			"default_params":          source.Attributes.Deployment.DefaultParams,
-			"image_error":             source.Attributes.Deployment.ImageError,
-			"image_error_append_qs":   source.Attributes.Deployment.ImageErrorAppendQs,
-			"image_missing":           source.Attributes.Deployment.ImageMissing,
-			"image_missing_append_qs": source.Attributes.Deployment.ImageMissingAppendQs,
-			"imgix_subdomains":        source.Attributes.Deployment.ImgixSubdomains,
-			"secure_url_enabled":      source.Attributes.Deployment.SecureUrlEnabled,
-			"type":                    source.Attributes.Deployment.Type,
+	deployment := map[string]interface{}{}
+	if deploymentRaw, ok := d.GetOk("deployment"); ok {
+		if deploymentRaw != nil {
+			deployment = deploymentRaw.([]interface{})[0].(map[string]interface{})
+		}
+	}
 
-			"s3_access_key": source.Attributes.Deployment.S3AccessKey,
-			"s3_secret_key": source.Attributes.Deployment.S3SecretKey,
-			"s3_bucket":     source.Attributes.Deployment.S3Bucket,
-			"s3_prefix":     source.Attributes.Deployment.S3Prefix,
-		},
-	})
+	deployment["allows_upload"] = source.Attributes.Deployment.AllowsUpload
+	deployment["annotation"] = source.Attributes.Deployment.Annotation
+	deployment["cache_ttl_behavior"] = source.Attributes.Deployment.CacheTtlBehavior
+	deployment["cache_ttl_error"] = source.Attributes.Deployment.CacheTtlError
+	deployment["cache_ttl_value"] = source.Attributes.Deployment.CacheTtlValue
+	deployment["crossdomain_xml_enabled"] = source.Attributes.Deployment.CrossdomainXmlEnabled
+	deployment["custom_domains"] = source.Attributes.Deployment.CustomDomains
+	deployment["default_params"] = source.Attributes.Deployment.DefaultParams
+	deployment["image_error"] = source.Attributes.Deployment.ImageError
+	deployment["image_error_append_qs"] = source.Attributes.Deployment.ImageErrorAppendQs
+	deployment["image_missing"] = source.Attributes.Deployment.ImageMissing
+	deployment["image_missing_append_qs"] = source.Attributes.Deployment.ImageMissingAppendQs
+	deployment["imgix_subdomains"] = source.Attributes.Deployment.ImgixSubdomains
+	deployment["secure_url_enabled"] = source.Attributes.Deployment.SecureUrlEnabled
+	deployment["type"] = source.Attributes.Deployment.Type
+	deployment["s3_access_key"] = source.Attributes.Deployment.S3AccessKey
+	deployment["s3_bucket"] = source.Attributes.Deployment.S3Bucket
+	deployment["s3_prefix"] = source.Attributes.Deployment.S3Prefix
+
+	d.Set("deployment", []interface{}{deployment})
 
 	return nil
 }
@@ -263,15 +272,43 @@ func resourceSourceUpdate(ctx context.Context, d *schema.ResourceData, i interfa
 		return diag.Errorf("Error reading source %s from state: %s", d.Id(), err.Error())
 	}
 
-	da, _ := json.MarshalIndent(source, "", "    ")
-	log.Print(string(da))
-
 	client := i.(*Client)
 	if err := client.updateSource(source); err != nil {
 		return diag.Errorf("Error updating source: %s", err)
 	}
 
 	return resourceSourceRead(ctx, d, i)
+}
+
+func resourceSourceCreate(ctx context.Context, d *schema.ResourceData, i interface{}) diag.Diagnostics {
+	source, err := getSourceFromResourceData(d)
+	if err != nil {
+		return diag.Errorf("Error reading source %s from state: %s", d.Id(), err.Error())
+	}
+
+	source.Id = nil
+	source.Attributes.Enabled = nil
+	source.Type = String(TypeSource)
+
+	client := i.(*Client)
+	newSource, err := client.createSource(source)
+	if err != nil {
+		return diag.FromErr(err)
+	}
+
+	d.SetId(*newSource.Id)
+
+	return resourceSourceRead(ctx, d, i)
+}
+
+func resourceSourceDelete(_ context.Context, d *schema.ResourceData, i interface{}) diag.Diagnostics {
+	client := i.(*Client)
+	source, err := getSourceFromResourceData(d)
+	if err != nil {
+		return diag.FromErr(err)
+	}
+
+	return diag.FromErr(client.deleteSource(source))
 }
 
 func getSourceFromResourceData(d *schema.ResourceData) (*Source, error) {
@@ -288,9 +325,10 @@ func getSourceFromResourceData(d *schema.ResourceData) (*Source, error) {
 	id := d.Id()
 	source := &Source{}
 	source.Id = &id
+	source.Type = String(d.Get("type"))
 	source.Attributes.DateDeployed = Int(d.Get("date_deployed"))
 	source.Attributes.DeploymentStatus = String(d.Get("deployment_status"))
-	source.Attributes.Enabled = d.Get("enabled").(bool)
+	source.Attributes.Enabled = Bool(d.Get("enabled"))
 	source.Attributes.Name = d.Get("name").(string)
 	source.Attributes.SecureUrlToken = String(d.Get("secure_url_token"))
 	source.Attributes.Deployment.AllowsUpload = Bool(deployment["allows_upload"])
@@ -301,9 +339,9 @@ func getSourceFromResourceData(d *schema.ResourceData) (*Source, error) {
 	source.Attributes.Deployment.CrossdomainXmlEnabled = deployment["crossdomain_xml_enabled"].(bool)
 	source.Attributes.Deployment.CustomDomains = SliceString(deployment["custom_domains"])
 	source.Attributes.Deployment.DefaultParams = deployment["default_params"].(map[string]interface{})
-	source.Attributes.Deployment.ImageError = String(deployment["image_error"])
+	source.Attributes.Deployment.ImageError = StringNilIfEmpty(deployment["image_error"])
 	source.Attributes.Deployment.ImageErrorAppendQs = deployment["image_error_append_qs"].(bool)
-	source.Attributes.Deployment.ImageMissing = String(deployment["image_missing"])
+	source.Attributes.Deployment.ImageMissing = StringNilIfEmpty(deployment["image_missing"])
 	source.Attributes.Deployment.ImageMissingAppendQs = deployment["image_missing_append_qs"].(bool)
 	source.Attributes.Deployment.ImgixSubdomains = SliceString(deployment["imgix_subdomains"])
 	source.Attributes.Deployment.SecureUrlEnabled = Bool(deployment["secure_url_enabled"])
@@ -316,11 +354,13 @@ func getSourceFromResourceData(d *schema.ResourceData) (*Source, error) {
 	return source, nil
 }
 
-func waitForSourceToExist(client *Client, id string, timeout time.Duration) (interface{}, error) {
+func waitForSourceToBeDeployed(client *Client, id string, timeout time.Duration) (interface{}, error) {
 	log.Printf("[DEBUG] Waiting for source %s being deployed", id)
 	stateConf := &resource.StateChangeConf{
 		Pending: []string{"deploying"},
 		Target:  []string{"deployed"},
+		// source doesn't start deploying immediately after request is finished
+		Delay:   5 * time.Second,
 		Refresh: sourceStateRefreshFunc(client, id),
 		Timeout: timeout,
 	}
@@ -338,6 +378,12 @@ func sourceStateRefreshFunc(client *Client, id string) resource.StateRefreshFunc
 		if source == nil {
 			return nil, "", errors.New("source not found")
 		}
+
+		log.Printf(
+			"[TRACE] Source %s deployment status: %s",
+			*source.Id,
+			*source.Attributes.DeploymentStatus,
+		)
 
 		return source, *source.Attributes.DeploymentStatus, nil
 	}

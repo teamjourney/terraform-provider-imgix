@@ -1,14 +1,14 @@
 HOSTNAME = journey.travel
-VERSION = 0.0.1
+VERSION = 1.0.0
 NAMESPACE = terraform-providers
 NAME = imgix
 BINARY = terraform-provider-${NAME}
 OS_ARCH = linux_amd64
 
 build:
-	go build -o terraform-provider-imgix
-	mkdir -p ~/.terraform.d/plugins/${HOSTNAME}/${NAMESPACE}/${NAME}/${VERSION}/${OS_ARCH}
-	mv ${BINARY} ~/.terraform.d/plugins/${HOSTNAME}/${NAMESPACE}/${NAME}/${VERSION}/${OS_ARCH}
+	go build -o ${BINARY}
+	mkdir -p ${HOME}/.terraform.d/plugins/${HOSTNAME}/${NAMESPACE}/${NAME}/${VERSION}/${OS_ARCH}
+	mv ${BINARY} ${HOME}/.terraform.d/plugins/${HOSTNAME}/${NAMESPACE}/${NAME}/${VERSION}/${OS_ARCH}
 
 init:
 	cd example && \
