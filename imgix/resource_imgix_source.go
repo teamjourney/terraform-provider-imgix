@@ -21,6 +21,10 @@ func resourceImgixSource() *schema.Resource {
 		UpdateContext: resourceSourceUpdate,
 		CreateContext: resourceSourceCreate,
 		DeleteContext: resourceSourceDelete,
+		Timeouts: &schema.ResourceTimeout{
+			Create: schema.DefaultTimeout(time.Minute * 30),
+			Update: schema.DefaultTimeout(time.Minute * 30),
+		},
 		Importer: &schema.ResourceImporter{
 			StateContext: schema.ImportStatePassthroughContext,
 		},
@@ -273,8 +277,12 @@ func resourceSourceUpdate(ctx context.Context, d *schema.ResourceData, i interfa
 	}
 
 	client := i.(*Client)
-	if err := client.updateSource(source); err != nil {
-		return diag.Errorf("Error updating source: %s", err)
+	source, err = makeSourceRequest(ctx, func() (*Source, error) {
+		return client.updateSource(source)
+	})
+
+	if err != nil {
+		return diag.FromErr(err)
 	}
 
 	return resourceSourceRead(ctx, d, i)
@@ -291,7 +299,9 @@ func resourceSourceCreate(ctx context.Context, d *schema.ResourceData, i interfa
 	source.Type = String(TypeSource)
 
 	client := i.(*Client)
-	newSource, err := client.createSource(source)
+	newSource, err := makeSourceRequest(ctx, func() (*Source, error) {
+		return client.createSource(source)
+	})
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -308,7 +318,45 @@ func resourceSourceDelete(_ context.Context, d *schema.ResourceData, i interface
 		return diag.FromErr(err)
 	}
 
-	return diag.FromErr(client.deleteSource(source))
+	if err := client.deleteSource(source); err != nil {
+		return diag.FromErr(err)
+	}
+
+	return diag.Diagnostics{
+		{
+			Severity: diag.Warning,
+			Summary:  "Source was disabled because cannot be removed",
+			Detail:   "Contact support for actual deletion of sources",
+		},
+	}
+}
+
+func makeSourceRequest(ctx context.Context, operation func() (*Source, error)) (*Source, error) {
+	conf := &resource.StateChangeConf{
+		Pending: []string{"retry"},
+		Target:  []string{"ok"},
+		Delay:   time.Second * 3,
+		Timeout: time.Second * 10,
+		Refresh: func() (interface{}, string, error) {
+			source, err := operation()
+			if err != nil {
+				if isImgixApiErr(err, InvalidAwsAccessKeyError) {
+					return nil, "retry", err
+				}
+
+				return nil, "error", err
+			}
+
+			return source, "ok", nil
+		},
+	}
+
+	res, err := conf.WaitForStateContext(ctx)
+	var s *Source
+	if res != nil {
+		s = res.(*Source)
+	}
+	return s, err
 }
 
 func getSourceFromResourceData(d *schema.ResourceData) (*Source, error) {
@@ -354,7 +402,7 @@ func getSourceFromResourceData(d *schema.ResourceData) (*Source, error) {
 	return source, nil
 }
 
-func waitForSourceToBeDeployed(client *Client, id string, timeout time.Duration) (interface{}, error) {
+func waitForSourceToBeDeployed(client *Client, id string, timeout time.Duration) (*Source, error) {
 	log.Printf("[DEBUG] Waiting for source %s being deployed", id)
 	stateConf := &resource.StateChangeConf{
 		Pending: []string{"deploying"},
@@ -365,7 +413,12 @@ func waitForSourceToBeDeployed(client *Client, id string, timeout time.Duration)
 		Timeout: timeout,
 	}
 
-	return stateConf.WaitForStateContext(context.Background())
+	res, err := stateConf.WaitForStateContext(context.Background())
+	var source *Source
+	if res != nil {
+		source = res.(*Source)
+	}
+	return source, err
 }
 
 func sourceStateRefreshFunc(client *Client, id string) resource.StateRefreshFunc {

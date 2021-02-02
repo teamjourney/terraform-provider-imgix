@@ -57,12 +57,39 @@ type Source struct {
 	} `json:"attributes"`
 }
 
+const (
+	InvalidAwsAccessKeyError = "aws_access_key"
+)
+
 type ApiError struct {
+	error
+
 	Errors []struct {
 		Detail string `json:"detail"`
 		Status string `json:"status"`
 		Title  string `json:"title"`
 	} `json:"errors"`
+}
+
+func (er ApiError) String() string {
+	msg := ""
+	for _, e := range er.Errors {
+		msg += fmt.Sprintf("status %s, details: %s", e.Status, e.Detail)
+	}
+	return msg
+}
+
+func isImgixApiErr(err error, code string) bool {
+	var imgixErr ApiError
+	if errors.As(err, &imgixErr) {
+		for _, k := range imgixErr.Errors {
+			if k.Title == code {
+				return true
+			}
+		}
+	}
+
+	return false
 }
 
 func (s Source) MarshalJSON() ([]byte, error) {
@@ -116,7 +143,7 @@ func (c *Client) createSource(source *Source) (*Source, error) {
 	return newSource, nil
 }
 
-func (c *Client) updateSource(source *Source) error {
+func (c *Client) updateSource(source *Source) (*Source, error) {
 	res, err := c.sendSourceRequest(
 		"/api/v1/sources/"+*source.Id,
 		http.MethodPatch,
@@ -124,14 +151,14 @@ func (c *Client) updateSource(source *Source) error {
 	)
 
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if res.StatusCode != http.StatusOK {
-		return serializeApiError(res)
+		return nil, serializeApiError(res)
 	}
 
-	return nil
+	return source, nil
 }
 
 func (c *Client) sendSourceRequest(endpoint, method string, source *Source) (*http.Response, error) {
@@ -158,7 +185,8 @@ func (c *Client) sendSourceRequest(endpoint, method string, source *Source) (*ht
 
 func (c *Client) deleteSource(source *Source) error {
 	source.Attributes.Enabled = Bool(false)
-	return c.updateSource(source)
+	_, err := c.updateSource(source)
+	return err
 }
 
 func serializeApiError(res *http.Response) error {
@@ -173,14 +201,5 @@ func serializeApiError(res *http.Response) error {
 		return errors.New("Error parsing response: " + err.Error())
 	}
 
-	msg := ""
-	for _, e := range apiError.Errors {
-		msg += fmt.Sprintf("status %s, details: %s", e.Status, e.Detail)
-	}
-
-	return errors.New(fmt.Sprintf(
-		"Error response from Imgix API. Status code: %d, error: %s",
-		res.StatusCode,
-		msg,
-	))
+	return apiError
 }
