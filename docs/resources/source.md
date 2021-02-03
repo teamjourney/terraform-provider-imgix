@@ -23,6 +23,7 @@ Allows managing Imgix sources
 ### Optional
 
 - **enabled** (Boolean) Whether or not a Source is enabled and capable of serving traffic.
+- **timeouts** (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
 - **wait_for_deployed** (Boolean) Determines if Terraform should wait for deployed status after any change
 
 ### Read-only
@@ -63,5 +64,14 @@ Optional:
 Read-only:
 
 - **allows_upload** (Boolean) Whether imgix has the right permissions for this Source to upload to origin.
+
+
+<a id="nestedblock--timeouts"></a>
+### Nested Schema for `timeouts`
+
+Optional:
+
+- **create** (String)
+- **update** (String)
 
 

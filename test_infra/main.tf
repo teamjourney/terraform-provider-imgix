@@ -1,20 +1,18 @@
 terraform {
   required_providers {
     imgix = {
-      source = "journey.travel/terraform-providers/imgix"
-      version = "1.0.0"
+      source  = "teamjourney/imgix"
+      version = "0.0.1-pre1"
     }
     aws = {
-      source = "hashicorp/aws"
+      source  = "hashicorp/aws"
       version = "~> 3.0"
     }
   }
 }
 
 provider "imgix" {}
-provider "aws" {
-  region = "eu-west-1"
-}
+provider "aws" {}
 
 resource "aws_s3_bucket" "this" {
   bucket_prefix = "test1-"
@@ -51,30 +49,32 @@ resource "aws_iam_access_key" "this1" {
   user = aws_iam_user.this.id
 }
 
-//resource "imgix_source" "this1" {
-//  name = "test11"
-//
-//  deployment {
-//    annotation = "test11 annotation"
-//    type = "s3"
-//    imgix_subdomains = ["pj-test111", "pj-test112"]
-//
-//    s3_access_key = aws_iam_access_key.this1.id
-//    s3_secret_key = aws_iam_access_key.this1.secret
-//    s3_bucket = aws_s3_bucket.this.bucket
-//  }
-//}
-
-resource "imgix_source" "this" {
-  name = "test2"
+resource "imgix_source" "this1" {
+  name = "test11"
 
   deployment {
-    annotation = "test22 annotation."
-    type = "s3"
-    imgix_subdomains = ["pj-test2"]
+    annotation       = "test1 annotation"
+    type             = "s3"
+    imgix_subdomains = ["test1"]
 
     s3_access_key = aws_iam_access_key.this1.id
     s3_secret_key = aws_iam_access_key.this1.secret
-    s3_bucket = aws_s3_bucket.this.bucket
+    s3_bucket     = aws_s3_bucket.this.bucket
+    s3_prefix     = "test1"
+  }
+}
+
+resource "imgix_source" "this2" {
+  name = "test2"
+
+  deployment {
+    annotation       = "test2 annotation"
+    type             = "s3"
+    imgix_subdomains = ["test2", "test22"]
+
+    s3_access_key = aws_iam_access_key.this1.id
+    s3_secret_key = aws_iam_access_key.this1.secret
+    s3_bucket     = aws_s3_bucket.this.bucket
+    s3_prefix     = "test1"
   }
 }
