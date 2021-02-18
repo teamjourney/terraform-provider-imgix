@@ -1,0 +1,57 @@
+{
+  "data": {
+    "attributes": {
+      "date_deployed": 1612274615,
+      "deployment": {
+        "annotation": "source1 annotation",
+        "cache_ttl_behavior": "respect_origin",
+        "cache_ttl_error": 300,
+        "cache_ttl_value": 31536000,
+        "crossdomain_xml_enabled": false,
+        "custom_domains": [],
+        "default_params": {},
+        "image_error": null,
+        "image_error_append_qs": false,
+        "image_missing": null,
+        "image_missing_append_qs": false,
+        "imgix_subdomains": [
+          "example-1",
+          "example-2"
+        ],
+        "s3_access_key": "AKIABCDEFGHI",
+        "s3_bucket": "abc-bucket",
+        "s3_prefix": "imgix-files",
+        "secure_url_enabled": false,
+        "type": "s3"
+      },
+      "deployment_status": "disabled",
+      "enabled": false,
+      "name": "source1"
+    },
+    "id": "601430223753592c4e822e2c",
+    "type": "sources"
+  },
+  "included": [],
+  "jsonapi": {
+    "version": "1.0"
+  },
+  "meta": {
+    "authentication": {
+      "authorized": true,
+      "clientId": null,
+      "mode": "PUBLIC_APIKEY",
+      "modeTitle": "Public API Key",
+      "tag": "email@example.com",
+      "user": null
+    },
+    "server": {
+      "commit": "abcdefghi",
+      "status": {
+        "healthy": true,
+        "read_only": false,
+        "tombstone": false
+      },
+      "version": "0.0.0"
+    }
+  }
+}

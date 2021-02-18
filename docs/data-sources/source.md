@@ -6,7 +6,7 @@ description: |-
   Allows getting Imgix source information
 ---
 
-# Data Source `imgix_source`
+# imgix_source (Data Source)
 
 Allows getting Imgix source information
 
@@ -17,10 +17,39 @@ Allows getting Imgix source information
 
 ### Required
 
-- **id** (String) The ID of this resource.
+- **id** (String) Id of the source
 
-### Optional
+### Read-Only
 
-- **name** (String)
+- **date_deployed** (Number) Unix timestamp of when this Source was deployed.
+- **deployment** (List of Object) (see [below for nested schema](#nestedatt--deployment))
+- **deployment_status** (String) Current deployment status. Possible values are deploying, deployed, disabled, and deleted.
+- **name** (String) Source display name. Does not impact how images are served.
+- **type** (String) Type of the resource. This will be always sources.
+
+<a id="nestedatt--deployment"></a>
+### Nested Schema for `deployment`
+
+Read-Only:
+
+- **allows_upload** (Boolean)
+- **annotation** (String)
+- **cache_ttl_behavior** (String)
+- **cache_ttl_error** (Number)
+- **cache_ttl_value** (Number)
+- **crossdomain_xml_enabled** (Boolean)
+- **custom_domains** (List of String)
+- **default_params** (Map of String)
+- **image_error** (String)
+- **image_error_append_qs** (Boolean)
+- **image_missing** (String)
+- **image_missing_append_qs** (Boolean)
+- **imgix_subdomains** (List of String)
+- **s3_access_key** (String)
+- **s3_bucket** (String)
+- **s3_prefix** (String)
+- **s3_secret_key** (String)
+- **secure_url_enabled** (Boolean)
+- **type** (String)
 
 

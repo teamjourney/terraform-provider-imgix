@@ -30,44 +30,46 @@ func resourceImgixSource() *schema.Resource {
 		},
 		Schema: map[string]*schema.Schema{
 			"id": {
-				Type:     schema.TypeString,
-				Computed: true,
+				Type:        schema.TypeString,
+				Computed:    true,
+				Description: sourceDescriptions["id"],
 			},
 			"type": {
-				Type:     schema.TypeString,
-				Computed: true,
+				Type:        schema.TypeString,
+				Computed:    true,
+				Description: sourceDescriptions["type"],
 			},
 			"name": {
 				Type:        schema.TypeString,
 				Required:    true,
-				Description: "Source display name. Does not impact how images are served.",
+				Description: sourceDescriptions["name"],
 			},
 			"deployment_status": {
 				Type:        schema.TypeString,
 				Computed:    true,
-				Description: "Current deployment status. Possible values are deploying, deployed, disabled, and deleted.",
+				Description: sourceDescriptions["deployment_status"],
 			},
 			"enabled": {
 				Type:        schema.TypeBool,
 				Optional:    true,
 				Default:     true,
-				Description: "Whether or not a Source is enabled and capable of serving traffic.",
+				Description: sourceDescriptions["enabled"],
 			},
 			"date_deployed": {
 				Type:        schema.TypeInt,
 				Computed:    true,
-				Description: "Unix timestamp of when this Source was deployed.",
+				Description: sourceDescriptions["date_deployed"],
 			},
 			"secure_url_token": {
 				Type:        schema.TypeString,
 				Computed:    true,
-				Description: "Signing token used for securing images. Only present if deployment.secure_url_enabled is true.",
+				Description: sourceDescriptions["secure_url_token"],
 			},
 			"wait_for_deployed": {
 				Type:        schema.TypeBool,
 				Optional:    true,
 				Default:     true,
-				Description: "Determines if Terraform should wait for deployed status after any change",
+				Description: sourceDescriptions["wait_for_deployed"],
 			},
 			"deployment": {
 				Type:     schema.TypeList,
@@ -78,18 +80,18 @@ func resourceImgixSource() *schema.Resource {
 						"allows_upload": {
 							Type:        schema.TypeBool,
 							Computed:    true,
-							Description: "Whether imgix has the right permissions for this Source to upload to origin.",
+							Description: sourceDescriptions["allows_upload"],
 						},
 						"annotation": {
 							Type:        schema.TypeString,
 							Optional:    true,
-							Description: "Any comment on the specific deployment.",
+							Description: sourceDescriptions["annotation"],
 						},
 						"cache_ttl_behavior": {
 							Type:        schema.TypeString,
 							Optional:    true,
 							Default:     "respect_origin",
-							Description: "Policy to determine how the TTL on imgix images is set.",
+							Description: sourceDescriptions["cache_ttl_behavior"],
 							ValidateFunc: validation.StringInSlice([]string{
 								"respect_origin",
 								"override_origin",
@@ -100,25 +102,25 @@ func resourceImgixSource() *schema.Resource {
 							Type:         schema.TypeInt,
 							Optional:     true,
 							Default:      300,
-							Description:  "TTL (in seconds) for any error image served when unable to fetch a file from origin.",
+							Description:  sourceDescriptions["cache_ttl_error"],
 							ValidateFunc: validation.IntBetween(1, 31536000),
 						},
 						"cache_ttl_value": {
 							Type:         schema.TypeInt,
 							Optional:     true,
 							Default:      31536000,
-							Description:  "TTL (in seconds) used by whatever cache mode is set by cache_ttl_behavior.",
+							Description:  sourceDescriptions["cache_ttl_value"],
 							ValidateFunc: validation.IntBetween(1, 31536000),
 						},
 						"crossdomain_xml_enabled": {
 							Type:        schema.TypeBool,
 							Optional:    true,
-							Description: "Whether this Source should serve a Cross-Domain Policy file if requested.",
+							Description: sourceDescriptions["crossdomain_xml_enabled"],
 						},
 						"custom_domains": {
 							Type:        schema.TypeList,
 							Optional:    true,
-							Description: " Non-imgix.net domains you want to use to access your images. Custom domains must be unique across all Sources and must be valid domains.",
+							Description: sourceDescriptions["custom_domains"],
 							Elem: &schema.Schema{
 								Type: schema.TypeString,
 							},
@@ -127,36 +129,36 @@ func resourceImgixSource() *schema.Resource {
 							Type:        schema.TypeMap,
 							Optional:    true,
 							Default:     map[string]string{},
-							Description: "Parameters that should be set on all requests to this Source. ",
+							Description: sourceDescriptions["default_params"],
 							Elem:        &schema.Schema{Type: schema.TypeString},
 						},
 						"image_error": {
 							Type:        schema.TypeString,
 							Optional:    true,
-							Description: "Image URL imgix should serve instead when a request results in an error.",
+							Description: sourceDescriptions["image_error"],
 						},
 						"image_error_append_qs": {
 							Type:        schema.TypeBool,
 							Optional:    true,
 							Default:     false,
-							Description: "Whether imgix should pass the parameters on the request that received an error to the URL described in image_error",
+							Description: sourceDescriptions["image_error_append_qs"],
 						},
 						"image_missing": {
 							Type:        schema.TypeString,
 							Optional:    true,
-							Description: "Image URL imgix should serve instead when a request results in a missing image.",
+							Description: sourceDescriptions["image_missing"],
 						},
 						"image_missing_append_qs": {
 							Type:        schema.TypeBool,
 							Optional:    true,
 							Default:     false,
-							Description: "Whether imgix should pass the parameters on the request that resulted in a missing image to the URL described in image_missing.",
+							Description: sourceDescriptions["image_missing_append_qs"],
 						},
 						"imgix_subdomains": {
 							Type:        schema.TypeList,
 							Required:    true,
 							MinItems:    1,
-							Description: "Subdomain you want to use on *.imgix.net to access your images.",
+							Description: sourceDescriptions["imgix_subdomains"],
 							Elem: &schema.Schema{
 								Type:             schema.TypeString,
 								ValidateDiagFunc: validateSubdomain,
@@ -165,11 +167,12 @@ func resourceImgixSource() *schema.Resource {
 						"secure_url_enabled": {
 							Type:        schema.TypeBool,
 							Optional:    true,
-							Description: "Whether requests must be signed with the secure_url_token to be considered valid.",
+							Description: sourceDescriptions["secure_url_enabled"],
 						},
 						"type": {
-							Type:     schema.TypeString,
-							Required: true,
+							Type:        schema.TypeString,
+							Required:    true,
+							Description: sourceDescriptions["deployment_type"],
 							ValidateFunc: validation.StringInSlice([]string{
 								"azure",
 								"gcs",
@@ -181,23 +184,23 @@ func resourceImgixSource() *schema.Resource {
 						"s3_access_key": {
 							Type:        schema.TypeString,
 							Optional:    true,
-							Description: "Access Key ID.",
+							Description: sourceDescriptions["s3_access_key"],
 						},
 						"s3_secret_key": {
 							Type:        schema.TypeString,
 							Optional:    true,
-							Description: "S3 Secret Access Key.",
+							Description: sourceDescriptions["s3_secret_key"],
 							Sensitive:   true,
 						},
 						"s3_bucket": {
 							Type:        schema.TypeString,
 							Optional:    true,
-							Description: "S3 bucket name.",
+							Description: sourceDescriptions["s3_bucket"],
 						},
 						"s3_prefix": {
 							Type:        schema.TypeString,
 							Optional:    true,
-							Description: "The folder prefix prepended to the image path before resolving the image in S3.",
+							Description: sourceDescriptions["s3_prefix"],
 						},
 					},
 				},
@@ -216,7 +219,7 @@ func validateSubdomain(i interface{}, _ cty.Path) diag.Diagnostics {
 }
 
 func resourceSourceRead(_ context.Context, d *schema.ResourceData, i interface{}) diag.Diagnostics {
-	client := i.(*Client)
+	client := i.(*client)
 	var sourceRaw interface{}
 	var err error
 
@@ -276,7 +279,7 @@ func resourceSourceUpdate(ctx context.Context, d *schema.ResourceData, i interfa
 		return diag.Errorf("Error reading source %s from state: %s", d.Id(), err.Error())
 	}
 
-	client := i.(*Client)
+	client := i.(*client)
 	source, err = makeSourceRequest(ctx, func() (*Source, error) {
 		return client.updateSource(source)
 	})
@@ -298,7 +301,7 @@ func resourceSourceCreate(ctx context.Context, d *schema.ResourceData, i interfa
 	source.Attributes.Enabled = nil
 	source.Type = String(TypeSource)
 
-	client := i.(*Client)
+	client := i.(*client)
 	newSource, err := makeSourceRequest(ctx, func() (*Source, error) {
 		return client.createSource(source)
 	})
@@ -312,7 +315,7 @@ func resourceSourceCreate(ctx context.Context, d *schema.ResourceData, i interfa
 }
 
 func resourceSourceDelete(_ context.Context, d *schema.ResourceData, i interface{}) diag.Diagnostics {
-	client := i.(*Client)
+	client := i.(*client)
 	source, err := getSourceFromResourceData(d)
 	if err != nil {
 		return diag.FromErr(err)
@@ -402,7 +405,7 @@ func getSourceFromResourceData(d *schema.ResourceData) (*Source, error) {
 	return source, nil
 }
 
-func waitForSourceToBeDeployed(client *Client, id string, timeout time.Duration) (*Source, error) {
+func waitForSourceToBeDeployed(client *client, id string, timeout time.Duration) (*Source, error) {
 	log.Printf("[DEBUG] Waiting for source %s being deployed", id)
 	stateConf := &resource.StateChangeConf{
 		Pending: []string{"deploying"},
@@ -421,7 +424,7 @@ func waitForSourceToBeDeployed(client *Client, id string, timeout time.Duration)
 	return source, err
 }
 
-func sourceStateRefreshFunc(client *Client, id string) resource.StateRefreshFunc {
+func sourceStateRefreshFunc(client *client, id string) resource.StateRefreshFunc {
 	return func() (result interface{}, state string, err error) {
 		source, err := client.getSourceById(id)
 		if err != nil {

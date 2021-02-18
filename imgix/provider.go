@@ -7,7 +7,8 @@ import (
 )
 
 type Config struct {
-	AccessKey string
+	AccessKey  string
+	ApiBaseUrl string
 }
 
 func Provider() *schema.Provider {
@@ -24,7 +25,8 @@ func Provider() *schema.Provider {
 			config := Config{
 				AccessKey: d.Get("api_key").(string),
 			}
-			return NewClient(config), nil
+			client, err := NewClient(config)
+			return client, diag.FromErr(err)
 		},
 		ResourcesMap: map[string]*schema.Resource{
 			"imgix_source": resourceImgixSource(),

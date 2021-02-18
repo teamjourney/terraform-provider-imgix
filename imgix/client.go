@@ -5,91 +5,67 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
 )
 
 const (
-	ApiUrl = "https://api.imgix.com"
+	apiUrl = "https://api.imgix.com"
 
 	TypeSource = "sources"
+
+	InvalidAwsAccessKeyError = "aws_access_key"
 )
 
-type Client struct {
+var (
+	missingAccessKeyError = errors.New("missing access key")
+)
+
+type client struct {
 	apiKey string
+	apiUrl string
+}
+
+type sourceAttributes struct {
+	DateDeployed     *int    `json:"date_deployed,omitempty"`
+	DeploymentStatus *string `json:"deployment_status,omitempty"`
+	Enabled          *bool   `json:"enabled,omitempty"`
+	Name             string  `json:"name"`
+	SecureUrlToken   *string `json:"secure_url_token,omitempty"`
+
+	Deployment sourceDeployment `json:"deployment"`
+}
+
+type sourceDeployment struct {
+	AllowsUpload          *bool                  `json:"allows_upload,omitempty"`
+	Annotation            string                 `json:"annotation"`
+	CacheTtlBehavior      string                 `json:"cache_ttl_behavior"`
+	CacheTtlError         int                    `json:"cache_ttl_error"`
+	CacheTtlValue         int                    `json:"cache_ttl_value"`
+	CrossdomainXmlEnabled bool                   `json:"crossdomain_xml_enabled"`
+	CustomDomains         []string               `json:"custom_domains"`
+	DefaultParams         map[string]interface{} `json:"default_params"`
+	ImageError            *string                `json:"image_error"`
+	ImageErrorAppendQs    bool                   `json:"image_error_append_qs"`
+	ImageMissing          *string                `json:"image_missing"`
+	ImageMissingAppendQs  bool                   `json:"image_missing_append_qs"`
+	ImgixSubdomains       []string               `json:"imgix_subdomains"`
+
+	S3AccessKey *string `json:"s3_access_key"`
+	S3SecretKey *string `json:"s3_secret_key"`
+	S3Bucket    *string `json:"s3_bucket"`
+	S3Prefix    *string `json:"s3_prefix"`
+
+	SecureUrlEnabled *bool  `json:"secure_url_enabled"`
+	Type             string `json:"type"`
 }
 
 type Source struct {
 	Id   *string `json:"id,omitempty"`
 	Type *string `json:"type,omitempty"`
 
-	Attributes struct {
-		DateDeployed     *int    `json:"date_deployed,omitempty"`
-		DeploymentStatus *string `json:"deployment_status,omitempty"`
-		Enabled          *bool   `json:"enabled,omitempty"`
-		Name             string  `json:"name"`
-		SecureUrlToken   *string `json:"secure_url_token,omitempty"`
-
-		Deployment struct {
-			AllowsUpload          *bool                  `json:"allows_upload,omitempty"`
-			Annotation            string                 `json:"annotation"`
-			CacheTtlBehavior      string                 `json:"cache_ttl_behavior"`
-			CacheTtlError         int                    `json:"cache_ttl_error"`
-			CacheTtlValue         int                    `json:"cache_ttl_value"`
-			CrossdomainXmlEnabled bool                   `json:"crossdomain_xml_enabled"`
-			CustomDomains         []string               `json:"custom_domains"`
-			DefaultParams         map[string]interface{} `json:"default_params"`
-			ImageError            *string                `json:"image_error"`
-			ImageErrorAppendQs    bool                   `json:"image_error_append_qs"`
-			ImageMissing          *string                `json:"image_missing"`
-			ImageMissingAppendQs  bool                   `json:"image_missing_append_qs"`
-			ImgixSubdomains       []string               `json:"imgix_subdomains"`
-
-			S3AccessKey *string `json:"s3_access_key"`
-			S3SecretKey *string `json:"s3_secret_key"`
-			S3Bucket    *string `json:"s3_bucket"`
-			S3Prefix    *string `json:"s3_prefix"`
-
-			SecureUrlEnabled *bool  `json:"secure_url_enabled"`
-			Type             string `json:"type"`
-		} `json:"deployment"`
-	} `json:"attributes"`
-}
-
-const (
-	InvalidAwsAccessKeyError = "aws_access_key"
-)
-
-type ApiError struct {
-	error
-
-	Errors []struct {
-		Detail string `json:"detail"`
-		Status string `json:"status"`
-		Title  string `json:"title"`
-	} `json:"errors"`
-}
-
-func (er ApiError) String() string {
-	msg := ""
-	for _, e := range er.Errors {
-		msg += fmt.Sprintf("status %s, details: %s", e.Status, e.Detail)
-	}
-	return msg
-}
-
-func isImgixApiErr(err error, code string) bool {
-	var imgixErr ApiError
-	if errors.As(err, &imgixErr) {
-		for _, k := range imgixErr.Errors {
-			if k.Title == code {
-				return true
-			}
-		}
-	}
-
-	return false
+	Attributes sourceAttributes `json:"attributes"`
 }
 
 func (s Source) MarshalJSON() ([]byte, error) {
@@ -106,31 +82,37 @@ type SourceRequest struct {
 	Data *Source `json:"data"`
 }
 
-func NewClient(config Config) *Client {
-	log.Printf("[INFO] Creating client with token: %s***", config.AccessKey[:5])
-	return &Client{
-		apiKey: config.AccessKey,
+func NewClient(config Config) (*client, error) {
+	if config.AccessKey == "" {
+		return nil, missingAccessKeyError
 	}
+
+	if config.ApiBaseUrl == "" {
+		config.ApiBaseUrl = apiUrl
+	}
+
+	return &client{
+		apiKey: config.AccessKey,
+		apiUrl: config.ApiBaseUrl,
+	}, nil
 }
 
-func (c *Client) getSourceById(id string) (*Source, error) {
-	req, _ := http.NewRequest(http.MethodGet, ApiUrl+"/api/v1/sources/"+id, nil)
-	req.Header.Set("Authorization", "Bearer "+c.apiKey)
-	res, err := http.DefaultClient.Do(req)
+func (c *client) getSourceById(id string) (*Source, error) {
+	res, err := c.doRequest("GET", "/api/v1/sources/"+id, nil)
 	if err != nil {
 		return nil, err
 	}
 
 	defer res.Body.Close()
-	source := &SourceRequest{}
 
+	source := &SourceRequest{}
 	if err = json.NewDecoder(res.Body).Decode(source); err != nil {
 		return nil, err
 	}
 	return source.Data, nil
 }
 
-func (c *Client) createSource(source *Source) (*Source, error) {
+func (c *client) createSource(source *Source) (*Source, error) {
 	res, err := c.sendSourceRequest("/api/v1/sources", http.MethodPost, source)
 	if err != nil {
 		return nil, err
@@ -143,7 +125,7 @@ func (c *Client) createSource(source *Source) (*Source, error) {
 	return newSource, nil
 }
 
-func (c *Client) updateSource(source *Source) (*Source, error) {
+func (c *client) updateSource(source *Source) (*Source, error) {
 	res, err := c.sendSourceRequest(
 		"/api/v1/sources/"+*source.Id,
 		http.MethodPatch,
@@ -161,21 +143,14 @@ func (c *Client) updateSource(source *Source) (*Source, error) {
 	return source, nil
 }
 
-func (c *Client) sendSourceRequest(endpoint, method string, source *Source) (*http.Response, error) {
+func (c *client) sendSourceRequest(endpoint, method string, source *Source) (*http.Response, error) {
 	d := SourceRequest{Data: source}
 	b, err := json.Marshal(d)
-
-	url := ApiUrl + endpoint
-	log.Printf("[DEBUG] Sending request to Imgix API: %s %s", method, url)
-	log.Printf("[DEBUG] Body: %s", b)
 	if err != nil {
 		return nil, errors.New(fmt.Sprintf("Error marshalling data: %s", err.Error()))
 	}
 
-	req, _ := http.NewRequest(method, url, bytes.NewBuffer(b))
-	req.Header.Set("Authorization", "Bearer "+c.apiKey)
-	req.Header.Set("Content-Type", "application/json")
-	res, err := http.DefaultClient.Do(req)
+	res, err := c.doRequest(method, endpoint, bytes.NewBuffer(b))
 	if err != nil {
 		return res, errors.New(fmt.Sprintf("Error sending request to Imgix API: %s", err))
 	}
@@ -183,10 +158,23 @@ func (c *Client) sendSourceRequest(endpoint, method string, source *Source) (*ht
 	return res, nil
 }
 
-func (c *Client) deleteSource(source *Source) error {
+func (c *client) deleteSource(source *Source) error {
 	source.Attributes.Enabled = Bool(false)
 	_, err := c.updateSource(source)
 	return err
+}
+
+func (c *client) doRequest(method, path string, body io.Reader) (*http.Response, error) {
+	url := c.apiUrl + path
+	req, err := http.NewRequest(method, url, body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Authorization", "Bearer "+c.apiKey)
+	req.Header.Set("Content-Type", "application/json")
+
+	return http.DefaultClient.Do(req)
 }
 
 func serializeApiError(res *http.Response) error {

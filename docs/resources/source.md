@@ -6,7 +6,7 @@ description: |-
   Allows managing Imgix sources
 ---
 
-# Resource `imgix_source`
+# imgix_source (Resource)
 
 Allows managing Imgix sources
 
@@ -24,15 +24,15 @@ Allows managing Imgix sources
 
 - **enabled** (Boolean) Whether or not a Source is enabled and capable of serving traffic.
 - **timeouts** (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
-- **wait_for_deployed** (Boolean) Determines if Terraform should wait for deployed status after any change
+- **wait_for_deployed** (Boolean) Determines if Terraform should wait for deployed status after any change.
 
-### Read-only
+### Read-Only
 
 - **date_deployed** (Number) Unix timestamp of when this Source was deployed.
 - **deployment_status** (String) Current deployment status. Possible values are deploying, deployed, disabled, and deleted.
-- **id** (String) The ID of this resource.
+- **id** (String) Id of the source
 - **secure_url_token** (String) Signing token used for securing images. Only present if deployment.secure_url_enabled is true.
-- **type** (String)
+- **type** (String) Type of the resource. This will be always sources.
 
 <a id="nestedblock--deployment"></a>
 ### Nested Schema for `deployment`
@@ -40,28 +40,28 @@ Allows managing Imgix sources
 Required:
 
 - **imgix_subdomains** (List of String) Subdomain you want to use on *.imgix.net to access your images.
-- **type** (String)
+- **type** (String) Type of the deployment.
 
 Optional:
 
 - **annotation** (String) Any comment on the specific deployment.
 - **cache_ttl_behavior** (String) Policy to determine how the TTL on imgix images is set.
 - **cache_ttl_error** (Number) TTL (in seconds) for any error image served when unable to fetch a file from origin.
-- **cache_ttl_value** (Number) TTL (in seconds) used by whatever cache mode is set by cache_ttl_behavior.
+- **cache_ttl_value** (Number) TTL (in seconds) for any error image served when unable to fetch a file from origin.
 - **crossdomain_xml_enabled** (Boolean) Whether this Source should serve a Cross-Domain Policy file if requested.
 - **custom_domains** (List of String) Non-imgix.net domains you want to use to access your images. Custom domains must be unique across all Sources and must be valid domains.
 - **default_params** (Map of String) Parameters that should be set on all requests to this Source.
 - **image_error** (String) Image URL imgix should serve instead when a request results in an error.
-- **image_error_append_qs** (Boolean) Whether imgix should pass the parameters on the request that received an error to the URL described in image_error
+- **image_error_append_qs** (Boolean) Whether imgix should pass the parameters on the request that received an error to the URL described in image_error.
 - **image_missing** (String) Image URL imgix should serve instead when a request results in a missing image.
 - **image_missing_append_qs** (Boolean) Whether imgix should pass the parameters on the request that resulted in a missing image to the URL described in image_missing.
-- **s3_access_key** (String) Access Key ID.
-- **s3_bucket** (String) S3 bucket name.
+- **s3_access_key** (String) AWS Access Key ID.
+- **s3_bucket** (String) AWS S3 bucket name.
 - **s3_prefix** (String) The folder prefix prepended to the image path before resolving the image in S3.
-- **s3_secret_key** (String, Sensitive) S3 Secret Access Key.
+- **s3_secret_key** (String, Sensitive) AWS S3 Secret Access Key.
 - **secure_url_enabled** (Boolean) Whether requests must be signed with the secure_url_token to be considered valid.
 
-Read-only:
+Read-Only:
 
 - **allows_upload** (Boolean) Whether imgix has the right permissions for this Source to upload to origin.
 
