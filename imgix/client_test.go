@@ -71,8 +71,6 @@ func startMockServer(t *testing.T) *httptest.Server {
 
 			w.WriteHeader(http.StatusOK)
 			w.Write(rawJson)
-		} else if path == testSourceEndpoint {
-
 		}
 	}))
 

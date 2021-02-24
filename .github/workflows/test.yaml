@@ -13,6 +13,4 @@ jobs:
         with:
           go-version: 1.15
       - name: Run tests
-        run: |
-          cd imgix
-          go test -v
+        run: go test -v ./..
