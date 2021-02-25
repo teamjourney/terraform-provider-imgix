@@ -2,7 +2,7 @@ terraform {
   required_providers {
     imgix = {
       source  = "teamjourney/imgix"
-      version = "0.0.1-pre1"
+      version = "0.0.1-pre2"
     }
     aws = {
       source  = "hashicorp/aws"
@@ -60,7 +60,7 @@ resource "imgix_source" "this" {
     imgix_subdomains = ["test11"]
 
     s3_access_key = aws_iam_access_key.this.id
-    s3_secret_key = "aa"
+    s3_secret_key = aws_iam_access_key.this.secret
     s3_bucket     = aws_s3_bucket.this.bucket
     s3_prefix     = "test1"
   }
