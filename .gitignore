@@ -1,0 +1,7 @@
+.idea
+.env
+.terraform
+terraform.tfstate
+terraform.tfstate.*
+vendor
+crash.log
