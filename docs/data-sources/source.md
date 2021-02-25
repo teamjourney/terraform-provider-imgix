@@ -48,7 +48,6 @@ Read-Only:
 - **s3_access_key** (String)
 - **s3_bucket** (String)
 - **s3_prefix** (String)
-- **s3_secret_key** (String)
 - **secure_url_enabled** (Boolean)
 - **type** (String)
 
