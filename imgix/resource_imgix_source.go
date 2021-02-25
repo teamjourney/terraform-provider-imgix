@@ -4,13 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"log"
-	"strings"
 	"time"
 )
 
@@ -207,15 +205,6 @@ func resourceImgixSource() *schema.Resource {
 			},
 		},
 	}
-}
-
-func validateSubdomain(i interface{}, _ cty.Path) diag.Diagnostics {
-	domain := i.(string)
-	if strings.HasSuffix(domain, "imgix.net") {
-		return diag.Errorf("Subdomains can't contain imgix.net suffix. Invalid record: %s", domain)
-	}
-
-	return nil
 }
 
 func resourceSourceRead(_ context.Context, d *schema.ResourceData, i interface{}) diag.Diagnostics {
