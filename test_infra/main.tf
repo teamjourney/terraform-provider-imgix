@@ -12,7 +12,9 @@ terraform {
 }
 
 provider "imgix" {}
-provider "aws" {}
+provider "aws" {
+  region = "eu-central-1"
+}
 
 resource "aws_s3_bucket" "this" {
   bucket_prefix = "test1-"
@@ -45,35 +47,20 @@ resource "aws_iam_user_policy" "this" {
   })
 }
 
-resource "aws_iam_access_key" "this1" {
+resource "aws_iam_access_key" "this" {
   user = aws_iam_user.this.id
 }
 
-resource "imgix_source" "this1" {
+resource "imgix_source" "this" {
   name = "test11"
 
   deployment {
     annotation       = "test1 annotation"
     type             = "s3"
-    imgix_subdomains = ["test1"]
+    imgix_subdomains = ["test11"]
 
-    s3_access_key = aws_iam_access_key.this1.id
-    s3_secret_key = aws_iam_access_key.this1.secret
-    s3_bucket     = aws_s3_bucket.this.bucket
-    s3_prefix     = "test1"
-  }
-}
-
-resource "imgix_source" "this2" {
-  name = "test2"
-
-  deployment {
-    annotation       = "test2 annotation"
-    type             = "s3"
-    imgix_subdomains = ["test2", "test22"]
-
-    s3_access_key = aws_iam_access_key.this1.id
-    s3_secret_key = aws_iam_access_key.this1.secret
+    s3_access_key = aws_iam_access_key.this.id
+    s3_secret_key = "aa"
     s3_bucket     = aws_s3_bucket.this.bucket
     s3_prefix     = "test1"
   }

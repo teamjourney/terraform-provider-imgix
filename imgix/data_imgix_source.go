@@ -141,11 +141,6 @@ func dataSourceImgixSource() *schema.Resource {
 							Computed:    true,
 							Description: sourceDescriptions["s3_access_key"],
 						},
-						"s3_secret_key": {
-							Type:        schema.TypeString,
-							Computed:    true,
-							Description: sourceDescriptions["s3_secret_key"],
-						},
 						"s3_bucket": {
 							Type:        schema.TypeString,
 							Computed:    true,

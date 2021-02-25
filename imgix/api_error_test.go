@@ -27,11 +27,16 @@ func TestErrorStringSerializing(t *testing.T) {
 		},
 	}
 
-	res := e.String()
 	expected := "status: error_1, details: error 1\nstatus: error_2, details: error 2"
 
+	res := e.String()
 	if res != expected {
 		t.Error("invalid error string")
+	}
+
+	err := e.Error()
+	if err != expected {
+		t.Error("invalid error returned")
 	}
 }
 

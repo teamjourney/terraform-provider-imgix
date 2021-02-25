@@ -279,9 +279,9 @@ func resourceSourceUpdate(ctx context.Context, d *schema.ResourceData, i interfa
 		return diag.Errorf("Error reading source %s from state: %s", d.Id(), err.Error())
 	}
 
-	client := i.(*client)
+	c := i.(*client)
 	source, err = makeSourceRequest(ctx, func() (*Source, error) {
-		return client.updateSource(source)
+		return c.updateSource(source)
 	})
 
 	if err != nil {
@@ -301,9 +301,9 @@ func resourceSourceCreate(ctx context.Context, d *schema.ResourceData, i interfa
 	source.Attributes.Enabled = nil
 	source.Type = String(TypeSource)
 
-	client := i.(*client)
+	c := i.(*client)
 	newSource, err := makeSourceRequest(ctx, func() (*Source, error) {
-		return client.createSource(source)
+		return c.createSource(source)
 	})
 	if err != nil {
 		return diag.FromErr(err)
@@ -315,14 +315,14 @@ func resourceSourceCreate(ctx context.Context, d *schema.ResourceData, i interfa
 }
 
 func resourceSourceDelete(_ context.Context, d *schema.ResourceData, i interface{}) diag.Diagnostics {
-	client := i.(*client)
+	c := i.(*client)
 	source, err := getSourceFromResourceData(d)
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
-	if err := client.deleteSource(source); err != nil {
-		return diag.FromErr(err)
+	if delErr := c.deleteSource(source); delErr != nil {
+		return diag.FromErr(delErr)
 	}
 
 	return diag.Diagnostics{
@@ -343,11 +343,7 @@ func makeSourceRequest(ctx context.Context, operation func() (*Source, error)) (
 		Refresh: func() (interface{}, string, error) {
 			source, err := operation()
 			if err != nil {
-				if isImgixApiErr(err, InvalidAwsAccessKeyError) {
-					return nil, "retry", err
-				}
-
-				return nil, "error", err
+				return nil, "", err
 			}
 
 			return source, "ok", nil

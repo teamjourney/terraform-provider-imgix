@@ -7,13 +7,15 @@ import (
 )
 
 type ApiError struct {
-	error
-
 	Errors []struct {
 		Detail string `json:"detail"`
 		Status string `json:"status"`
 		Title  string `json:"title"`
 	} `json:"errors"`
+}
+
+func (er ApiError) Error() string {
+	return er.String()
 }
 
 func (er ApiError) String() string {
