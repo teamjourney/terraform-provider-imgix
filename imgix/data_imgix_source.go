@@ -10,16 +10,14 @@ func dataSourceImgixSource() *schema.Resource {
 	return &schema.Resource{
 		Description: "Allows getting Imgix source information",
 		ReadContext: func(ctx context.Context, data *schema.ResourceData, i interface{}) diag.Diagnostics {
-			client := i.(*client)
+			c := i.(*client)
 			id := data.Get("id").(string)
-
-			source, err := client.getSourceById(id)
+			source, err := c.getSourceById(id)
 			if err != nil {
 				return diag.FromErr(err)
 			}
 
-			data.Set("name", source.Attributes.Name)
-			data.SetId(id)
+			setResourceDataFieldsFromSource(data, source)
 
 			return nil
 		},

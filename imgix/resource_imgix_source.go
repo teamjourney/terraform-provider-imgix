@@ -208,14 +208,14 @@ func resourceImgixSource() *schema.Resource {
 }
 
 func resourceSourceRead(_ context.Context, d *schema.ResourceData, i interface{}) diag.Diagnostics {
-	client := i.(*client)
+	c := i.(*client)
 	var sourceRaw interface{}
 	var err error
 
 	if d.Get("wait_for_deployed").(bool) {
-		sourceRaw, err = waitForSourceToBeDeployed(client, d.Id(), d.Timeout(schema.TimeoutRead))
+		sourceRaw, err = waitForSourceToBeDeployed(c, d.Id(), d.Timeout(schema.TimeoutRead))
 	} else {
-		sourceRaw, _, err = sourceStateRefreshFunc(client, d.Id())()
+		sourceRaw, _, err = sourceStateRefreshFunc(c, d.Id())()
 	}
 
 	if err != nil {
@@ -223,7 +223,11 @@ func resourceSourceRead(_ context.Context, d *schema.ResourceData, i interface{}
 	}
 
 	source := sourceRaw.(*Source)
+	setResourceDataFieldsFromSource(d, source)
+	return nil
+}
 
+func setResourceDataFieldsFromSource(d *schema.ResourceData, source *Source) {
 	d.SetId(*source.Id)
 	d.Set("name", source.Attributes.Name)
 	d.Set("type", source.Type)
@@ -231,6 +235,7 @@ func resourceSourceRead(_ context.Context, d *schema.ResourceData, i interface{}
 	d.Set("date_deployed", source.Attributes.DateDeployed)
 	d.Set("enabled", source.Attributes.Enabled)
 	d.Set("secure_url_token", source.Attributes.SecureUrlToken)
+
 	deployment := map[string]interface{}{}
 	if deploymentRaw, ok := d.GetOk("deployment"); ok {
 		if deploymentRaw != nil {
@@ -258,8 +263,6 @@ func resourceSourceRead(_ context.Context, d *schema.ResourceData, i interface{}
 	deployment["s3_prefix"] = source.Attributes.Deployment.S3Prefix
 
 	d.Set("deployment", []interface{}{deployment})
-
-	return nil
 }
 
 func resourceSourceUpdate(ctx context.Context, d *schema.ResourceData, i interface{}) diag.Diagnostics {
