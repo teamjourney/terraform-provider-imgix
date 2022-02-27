@@ -200,6 +200,27 @@ func resourceImgixSource() *schema.Resource {
 							Optional:    true,
 							Description: sourceDescriptions["s3_prefix"],
 						},
+						"gcs_access_key": {
+							Type:        schema.TypeString,
+							Optional:    true,
+							Description: sourceDescriptions["gcs_access_key"],
+						},
+						"gcs_secret_key": {
+							Type:        schema.TypeString,
+							Optional:    true,
+							Description: sourceDescriptions["gcs_secret_key"],
+							Sensitive:   true,
+						},
+						"gcs_bucket": {
+							Type:        schema.TypeString,
+							Optional:    true,
+							Description: sourceDescriptions["gcs_bucket"],
+						},
+						"gcs_prefix": {
+							Type:        schema.TypeString,
+							Optional:    true,
+							Description: sourceDescriptions["gcs_prefix"],
+						},
 					},
 				},
 			},
@@ -261,6 +282,9 @@ func setResourceDataFieldsFromSource(d *schema.ResourceData, source *Source) {
 	deployment["s3_access_key"] = source.Attributes.Deployment.S3AccessKey
 	deployment["s3_bucket"] = source.Attributes.Deployment.S3Bucket
 	deployment["s3_prefix"] = source.Attributes.Deployment.S3Prefix
+	deployment["gcs_access_key"] = source.Attributes.Deployment.GCSAccessKey
+	deployment["gcs_bucket"] = source.Attributes.Deployment.GCSBucket
+	deployment["gcs_prefix"] = source.Attributes.Deployment.GCSPrefix
 
 	d.Set("deployment", []interface{}{deployment})
 }
@@ -389,6 +413,10 @@ func getSourceFromResourceData(d *schema.ResourceData) (*Source, error) {
 	source.Attributes.Deployment.S3SecretKey = String(deployment["s3_secret_key"])
 	source.Attributes.Deployment.S3Bucket = String(deployment["s3_bucket"])
 	source.Attributes.Deployment.S3Prefix = String(deployment["s3_prefix"])
+	source.Attributes.Deployment.GCSAccessKey = String(deployment["gcs_access_key"])
+	source.Attributes.Deployment.GCSSecretKey = String(deployment["gcs_secret_key"])
+	source.Attributes.Deployment.GCSBucket = String(deployment["gcs_bucket"])
+	source.Attributes.Deployment.GCSPrefix = String(deployment["gcs_prefix"])
 
 	return source, nil
 }

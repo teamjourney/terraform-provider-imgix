@@ -149,6 +149,21 @@ func dataSourceImgixSource() *schema.Resource {
 							Computed:    true,
 							Description: sourceDescriptions["s3_prefix"],
 						},
+						"gcs_access_key": {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: sourceDescriptions["gcs_access_key"],
+						},
+						"gcs_bucket": {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: sourceDescriptions["gcs_bucket"],
+						},
+						"gcs_prefix": {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: sourceDescriptions["gcs_prefix"],
+						},
 					},
 				},
 			},
