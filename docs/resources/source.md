@@ -59,6 +59,10 @@ Optional:
 - **s3_bucket** (String) AWS S3 bucket name.
 - **s3_prefix** (String) The folder prefix prepended to the image path before resolving the image in S3.
 - **s3_secret_key** (String, Sensitive) AWS S3 Secret Access Key.
+- **gcs_access_key** (String) GCS Access Key ID.
+- **gcs_bucket** (String) GCS bucket name.
+- **gcs_prefix** (String) The folder prefix prepended to the image path before resolving the image in GCS.
+- **gcs_secret_key** (String, Sensitive) GCS Secret Access Key.
 - **secure_url_enabled** (Boolean) Whether requests must be signed with the secure_url_token to be considered valid.
 
 Read-Only:

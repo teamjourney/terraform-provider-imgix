@@ -28,4 +28,8 @@ var sourceDescriptions = map[string]string{
 	"s3_secret_key":           "AWS S3 Secret Access Key.",
 	"s3_bucket":               "AWS S3 bucket name.",
 	"s3_prefix":               "The folder prefix prepended to the image path before resolving the image in S3.",
+	"gcs_access_key":          "GCS Access Key ID.",
+	"gcs_secret_key":          "GCS Secret Access Key.",
+	"gcs_bucket":              "GCS bucket name.",
+	"gcs_prefix":              "The folder prefix prepended to the image path before resolving the image in GCS.",
 }

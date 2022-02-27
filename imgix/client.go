@@ -57,6 +57,11 @@ type sourceDeployment struct {
 	S3Bucket    *string `json:"s3_bucket"`
 	S3Prefix    *string `json:"s3_prefix"`
 
+	GCSAccessKey *string `json:"gcs_access_key"`
+	GCSSecretKey *string `json:"gcs_secret_key"`
+	GCSBucket    *string `json:"gcs_bucket"`
+	GCSPrefix    *string `json:"gcs_prefix"`
+
 	SecureUrlEnabled *bool  `json:"secure_url_enabled"`
 	Type             string `json:"type"`
 }
